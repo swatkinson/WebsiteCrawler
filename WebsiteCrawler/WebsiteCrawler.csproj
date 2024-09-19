@@ -12,4 +12,8 @@
       <PackageReference Include="Textify" Version="0.2.0-beta" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Console\Pinaka.csproj" />
+    </ItemGroup>
+
 </Project>
