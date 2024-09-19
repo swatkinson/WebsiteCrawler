@@ -1,16 +1,36 @@
-using System.Text;
-using HtmlAgilityPack;
+using System.Text.RegularExpressions;
+using Textify;
 
 namespace WebsiteCrawler;
 
-public static class WebsiteCrawler
+public static partial class WebsiteCrawler
 {
-    public static async Task Crawl(string url, int curDepth, int maxDepth)
+    private static HashSet<string> _visitedLinks;
+    
+    static WebsiteCrawler()
     {
-        if (curDepth > maxDepth) // || !_visitedLinks.Add(url)
-            return;
+        _visitedLinks = new HashSet<string>();
+    }
 
+    [GeneratedRegex(@"\[(\d+)\] (http\S+)")]
+    private static partial Regex LinkRegex();
+    
+    public static async Task Crawl(string url, int maxDepth, int? urlNumber = null, int curDepth = 0)
+    {
+        if (curDepth > maxDepth || !_visitedLinks.Add(url))
+        {
+            return;
+        }
+
+        RandomConsoleColour();
+        
+        Console.WriteLine(urlNumber is null
+            ? $"Crawling into base url \"{url}\" to a maximum depth of {maxDepth}..."
+            : $"\n\n\nAttempting to crawl into link [{urlNumber}] {url}.");
+        
         var webClient = new HttpClient();
+
+        webClient.Timeout = TimeSpan.FromSeconds(5);
         
         var request = new HttpRequestMessage(HttpMethod.Get, url);
 
@@ -24,125 +44,49 @@ public static class WebsiteCrawler
         response.EnsureSuccessStatusCode();
 
         var html = await response.Content.ReadAsStringAsync();
-        Console.WriteLine(html);
-        Console.WriteLine(ExtractTextFromHtml(html));
+        
+        var converter = new HtmlToTextConverter();
+        var cleanHtml = converter.Convert(html);
 
-        var cssLinks = ExtractLinks(html);
-    
-        foreach (var link in cssLinks)
+        var httpLinks = ExtractLinks(cleanHtml);
+        
+        Console.WriteLine(cleanHtml);
+        
+        foreach (var link in httpLinks.Where(l => l.Value.Contains("http")))
         {
-            Console.WriteLine(link);
-        }
-    }
-
-    private static string ExtractTextFromHtml(string html)
-    {
-        var doc = new HtmlDocument();
-        doc.LoadHtml(html);
-
-        // Remove script and style tags
-        var nodesToRemove = doc.DocumentNode.SelectNodes("//script|//style");
-
-        if (nodesToRemove == null) return ExtractTextWithStructure(doc.DocumentNode);
-
-        foreach (var node in nodesToRemove)
-        {
-            node.Remove();
-        }
-
-        // Extract and return structured text
-        return ExtractTextWithStructure(doc.DocumentNode);
-    }
-
-    private static string ExtractTextWithStructure(HtmlNode? node)
-    {
-        var sb = new StringBuilder();
-
-        if (node == null) return string.Empty; // Ensure the node itself isn't null
-
-        foreach (var childNode in node.ChildNodes)
-        {
-            if (childNode == null) continue; // Ensure each child node isn't null
-
-            switch (childNode.Name)
+            try
             {
-                case "h1" or "h2" or "h3" or "h4" or "h5" or "h6":
-                    // Add new line and heading text
-                    sb.AppendLine().AppendLine(childNode.InnerText.Trim()).AppendLine();
-                    break;
-                case "p":
-                    // Paragraph text
-                    sb.AppendLine(childNode.InnerText.Trim()).AppendLine();
-                    break;
-                case "ul" or "ol":
-                {
-                    // Handle lists (ul or ol)
-                    var listItems = childNode.SelectNodes(".//li");
-                    if (listItems != null)
-                    {
-                        foreach (var li in listItems)
-                        {
-                            if (li != null)
-                            {
-                                sb.AppendLine("- " + li.InnerText.Trim());
-                            }
-                        }
-                    }
-
-                    sb.AppendLine();
-                    break;
-                }
-                case "li":
-                    // Handle individual list item if not inside a ul/ol block
-                    sb.AppendLine("- " + childNode.InnerText.Trim());
-                    break;
-                default:
-                {
-                    // Recursively extract text from child nodes
-                    sb.Append(
-                        // General text extraction for other nodes
-                        childNode.HasChildNodes ? ExtractTextWithStructure(childNode) : childNode.InnerText.Trim());
-
-                    break;
-                }
+                await Crawl(link.Value, maxDepth, link.Key, curDepth + 1);
             }
-        }
-
-        return sb.ToString();
-    }
-    
-    private static List<string> ExtractLinks(string pageContent)
-    {
-        var links = new List<string>();
-        var startIndex = 0;
-
-        while (true)
-        {
-            startIndex = pageContent.IndexOf("<a", startIndex, StringComparison.Ordinal);
-            if (startIndex == -1)
-                break;
-
-            var endIndex = pageContent.IndexOf(">", startIndex, StringComparison.Ordinal);
-            if (endIndex == -1)
-                break;
-
-            var tagContent = pageContent.Substring(startIndex, endIndex - startIndex + 1);
-
-            var attributeStartIndex = tagContent.IndexOf("href=\"", StringComparison.Ordinal);
-            if (attributeStartIndex != -1)
+            catch (Exception ex)
             {
-                attributeStartIndex += 6;
-                var attributeEndIndex = tagContent.IndexOf("\"", attributeStartIndex, StringComparison.Ordinal);
-                if (attributeEndIndex != -1)
-                {
-                    var link = tagContent.Substring(attributeStartIndex, attributeEndIndex - attributeStartIndex);
-                    links.Add(link);
-                }
+                Console.WriteLine($"Could not access website, ran into error: {ex.Data}\n{ex.Message}");
             }
-
-            startIndex = endIndex + 1;
+            
         }
+    }
 
+    private static Dictionary<int, string> ExtractLinks(string cleanHtml)
+    {
+        var links = new Dictionary<int, string>();
+        foreach (Match match in LinkRegex().Matches(cleanHtml))
+        {
+            links.Add(int.Parse(match.Groups[1].Value), match.Groups[2].Value);
+        }
+        
         return links;
+    }
+
+    private static void RandomConsoleColour()
+    {
+        var random = new Random();
+        var colors = Enum.GetValues(typeof(ConsoleColor));
+        ConsoleColor randomColor;
+        do
+        {
+            randomColor = (ConsoleColor)colors.GetValue(random.Next(colors.Length))!;
+        }
+        while (randomColor == ConsoleColor.Black|| randomColor == ConsoleColor.DarkGray || randomColor == Console.ForegroundColor);
+        Console.ForegroundColor = randomColor;
     }
 }
