@@ -1,6 +1,6 @@
 # 🌐 WebsiteCrawler
 
-WebsiteCrawler is a simple C# console application that recursively crawls websites, extracts links, and displays the text content of web pages.
+WebsiteCrawler is a C# console application that recursively crawls websites, extracts links, and displays the text content of web pages.
 
 ## Features
 
