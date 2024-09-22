@@ -1,14 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
+        <PackageId>WebsiteCrawler</PackageId>
+        <Version>1.0.0</Version>
+        <Authors>swatkinson</Authors>
+        <Description>Website URL Crawler + text scraper</Description>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/swatkinson/WebsiteCrawler</RepositoryUrl>
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="HtmlAgilityPack" Version="1.11.65" />
+      <PackageReference Include="Selenium.WebDriver" Version="4.24.0" />
       <PackageReference Include="Textify" Version="0.2.0-beta" />
     </ItemGroup>
 

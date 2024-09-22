@@ -1,65 +1,66 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Textify;
+using OpenQA.Selenium.Chrome;
 
 namespace WebsiteCrawler;
 
-public static partial class WebsiteCrawler
+public static class WebsiteCrawler
 {
-    private static HashSet<string> _visitedLinks;
-    
+    private static readonly HashSet<string> VisitedLinks = [];
+
     static WebsiteCrawler()
     {
-        _visitedLinks = new HashSet<string>();
+        var options = new ChromeOptions();
+        options.AddArgument("--headless");
+        var driver = new ChromeDriver(options);
+        Driver = driver;
     }
 
-    [GeneratedRegex(@"\[(\d+)\] (http\S+)")]
-    private static partial Regex LinkRegex();
+    private static readonly ChromeDriver Driver;
+    
+    private static readonly HtmlToTextConverter Converter = new();
     
     public static async Task Crawl(string baseurl, int maxDepth, int curDepth = 0, string url = "")
     {
         if (string.IsNullOrEmpty(url)) url = baseurl;
         
-        if (!_visitedLinks.Add(url) || (curDepth > maxDepth && !url.Contains(baseurl))) return;
+        if (!VisitedLinks.Add(url) || (curDepth > maxDepth && !url.Contains(baseurl))) return;
 
         RandomConsoleColour();
 
         Console.WriteLine($"\nAttempting to crawl into url \"{url}\" to a maximum depth of {maxDepth}, current depth is {curDepth}...");
         
-        var webClient = new HttpClient();
-
-        webClient.Timeout = TimeSpan.FromSeconds(5);
-        
-        var request = new HttpRequestMessage(HttpMethod.Get, url);
-
-        // Add headers to mimic a real browser
-        request.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36");
-        request.Headers.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-        request.Headers.Add("Accept-Language", "en-US,en;q=0.5");
-        request.Headers.Add("Referer", "http://www.google.com/");
-
+        // Fetch HTML from URL using Selenium
         var html = "";
         try
         {
-            var response = await webClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-            html = await response.Content.ReadAsStringAsync();
+            await Driver.Navigate().GoToUrlAsync(url);
+            html = Driver.PageSource;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Could not access website, ran into error: {ex.Message}\n{ex}");
         }
         
-        var converter = new HtmlToTextConverter();
-        var cleanHtml = converter.Convert(html);
+        // Clean HTML into readable plaintext
+        var plainText = Converter.Convert(html);
         
-        Console.WriteLine(FormatLinks(cleanHtml, url, out var links));
+        // Get list of links from HTML, and format plaintext to have links inside of it
+        var plaintextPlusLinks = FormatLinks(plainText, url, out var links);
         
+        Console.WriteLine(plaintextPlusLinks);
+        
+        // Crawls into the links found on the webpage
         foreach (var link in links)
         {
             await Crawl(baseurl, maxDepth, curDepth + 1, link);
         }
     }
-
+    
     private static void RandomConsoleColour()
     {
         var random = new Random();

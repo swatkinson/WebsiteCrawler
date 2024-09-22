@@ -1,4 +1,4 @@
-﻿namespace WebsiteCrawler;
+﻿namespace WebsiteCrawler.Console;
 
 internal abstract class Program
 {
@@ -7,11 +7,12 @@ internal abstract class Program
         const string url =
             // "https://www.scrapingcourse.com/ecommerce/";
             "https://www.resqwest.com";
+            //"https://www.hiltonwaikoloavillage.com/";
         const int maxDepth = 1;
-        
+
         await WebsiteCrawler.Crawl(url, maxDepth);
         
-        Console.WriteLine("\nCrawling complete!");
+        System.Console.WriteLine("\nCrawling complete!");
     }
 }
 
