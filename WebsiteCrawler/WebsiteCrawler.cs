@@ -24,15 +24,15 @@ public static class WebsiteCrawler
     
     private static readonly HtmlToTextConverter Converter = new();
     
-    public static async Task Crawl(string baseurl, int maxDepth, int curDepth = 0, string url = "")
+    private static readonly Dictionary<string, string> WebsiteInfo = new();
+    
+    public static async Task<Dictionary<string, string>> Crawl(string baseurl, int maxDepth, int curDepth = 0, string url = "")
     {
         if (string.IsNullOrEmpty(url)) url = baseurl;
         
-        if (!VisitedLinks.Add(url) || (curDepth > maxDepth && !url.Contains(baseurl))) return;
-
-        RandomConsoleColour();
-
-        Console.WriteLine($"\nAttempting to crawl into url \"{url}\" to a maximum depth of {maxDepth}, current depth is {curDepth}...");
+        if (!VisitedLinks.Add(url) || (curDepth > maxDepth /*&& !url.Contains(baseurl)*/)) return WebsiteInfo;
+        
+        Console.WriteLine($"[WebsiteCrawler] MaxDepth: {maxDepth,-2} | Current Depth: {curDepth,-2} | Attempting to crawl into url: {url}");
         
         // Fetch HTML from URL using Selenium
         var html = "";
@@ -43,7 +43,7 @@ public static class WebsiteCrawler
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Could not access website, ran into error: {ex.Message}\n{ex}");
+            Console.WriteLine($"[WebsiteCrawler] Could not access website, ran into error: {ex.Message}\n{ex}");
         }
         
         // Clean HTML into readable plaintext
@@ -52,26 +52,16 @@ public static class WebsiteCrawler
         // Get list of links from HTML, and format plaintext to have links inside of it
         var plaintextPlusLinks = FormatLinks(plainText, url, out var links);
         
-        Console.WriteLine(plaintextPlusLinks);
+        //Console.WriteLine(plaintextPlusLinks);
+        WebsiteInfo[url] = plaintextPlusLinks;
         
         // Crawls into the links found on the webpage
-        foreach (var link in links)
+        foreach (var link in links.Where(l => l.Contains("http")))
         {
             await Crawl(baseurl, maxDepth, curDepth + 1, link);
         }
-    }
-    
-    private static void RandomConsoleColour()
-    {
-        var random = new Random();
-        var colors = Enum.GetValues(typeof(ConsoleColor));
-        ConsoleColor randomColor;
-        do
-        {
-            randomColor = (ConsoleColor)colors.GetValue(random.Next(colors.Length))!;
-        } while (randomColor == ConsoleColor.Black || randomColor == ConsoleColor.DarkGray || randomColor == Console.ForegroundColor);
-
-        Console.ForegroundColor = randomColor;
+        
+        return WebsiteInfo;
     }
 
     private static string FormatLinks(string input, string baseUrl, out List<string> collectedLinks)
