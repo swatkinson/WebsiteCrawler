@@ -1,4 +1,4 @@
-name: Publish Nuget Package
+name: Publish to GitHub Packages
 
 on:
   push:
@@ -24,8 +24,14 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
+      - name: Get Version
+        id: gitversion
+        run: |
+          dotnet tool restore
+          gitversion /output json /showvariable SemVer
+
       - name: Pack NuGet package
-        run: dotnet pack WebsiteCrawler/WebsiteCrawler.csproj --configuration Release --output ./WebsiteCrawler/bin/Release
+        run: dotnet pack WebsiteCrawler/WebsiteCrawler.csproj --configuration Release --output ./WebsiteCrawler/bin/Release --version ${{ steps.gitversion.outputs.SemVer }}
 
       - name: Publish NuGet package
         run: dotnet nuget push ./WebsiteCrawler/bin/Release/*.nupkg --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json --api-key ${{ secrets.GITHUB_TOKEN }}
