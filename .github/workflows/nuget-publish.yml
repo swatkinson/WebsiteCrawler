@@ -25,7 +25,7 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Pack NuGet package
-        run: dotnet pack WebsiteCrawler/WebsiteCrawler.csproj --configuration Release --output ./WebsiteCrawler/bin/Release
+        run: dotnet pack WebsiteCrawler/WebsiteCrawler.csproj --configuration Release --output ./WebsiteCrawler/bin/Release --version "{{ github.run_number }}"
 
       - name: Publish NuGet package
         run: dotnet nuget push ./WebsiteCrawler/bin/Release/*.nupkg --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json --api-key ${{ secrets.GITHUB_TOKEN }}
