@@ -23,10 +23,10 @@ WebsiteCrawler is a C# console application that recursively crawls websites, ext
    const int maxDepth = 1;
    ```
 
-3. **Run the Application**:
+3. **Call the Crawl Command**:
 
    ```bash
-   dotnet run
+   await WebsiteCrawler.Crawl(url, maxDepth);
    ```
 
 ## Requirements
